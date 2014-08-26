@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # holman does dotfiles
 
 ## dotfiles
@@ -86,3 +87,9 @@ weight of my changes and tweaks inspired me to finally roll my own. But Ryan's
 dotfiles were an easy way to get into bash customization, and then to jump ship
 to zsh a bit later. A decent amount of the code in these dotfiles stem or are
 inspired from Ryan's original project.
+=======
+dotfiles
+========
+
+based on holman dotfiles
+>>>>>>> ceb069beeb60ce22e3ad3c8a2d375a4975d74608
