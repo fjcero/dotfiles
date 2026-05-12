@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# packages/home/export - snapshot tracked dotfiles from $HOME (git + SSH client config only; never keys).
+
+set -euo pipefail
+
+export DOTFILES_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+export_dir=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --output|-o)
+      export_dir="$2"
+      shift 2
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
+
+if [[ -z "$export_dir" ]]; then
+  echo "Usage: $0 --output <dir>" >&2
+  exit 1
+fi
+
+mkdir -p "$export_dir"
+
+copy_if() {
+  local src="$1"
+  local dest="$2"
+  if [[ -e "$src" ]]; then
+    mkdir -p "$(dirname "$dest")"
+    cp -R "$src" "$dest"
+  fi
+}
+
+copy_if "$HOME/.gitconfig" "$export_dir/.gitconfig"
+copy_if "$HOME/.gitignore_global" "$export_dir/.gitignore_global"
+
+if [[ -f "$HOME/.ssh/config" ]]; then
+  mkdir -p "$export_dir/.ssh"
+  cp "$HOME/.ssh/config" "$export_dir/.ssh/config"
+fi
+
+echo "home export: done -> $export_dir"

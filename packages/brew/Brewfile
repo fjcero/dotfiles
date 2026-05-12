@@ -1,0 +1,4 @@
+# Brewfile - Homebrew dependencies needed to bootstrap this dotfiles repo.
+
+brew "node"
+brew "stow"

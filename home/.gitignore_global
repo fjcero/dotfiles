@@ -1,0 +1,3 @@
+# Global gitignore (optional). Symlinked to ~/.gitignore_global — add patterns as needed.
+
+.DS_Store

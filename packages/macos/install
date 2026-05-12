@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# packages/macos/install - apply curated macOS defaults.
+
+set -euo pipefail
+
+export DOTFILES_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+echo "Configuring macOS defaults..."
+
+defaults write com.apple.AppleMultitouchTrackpad Tracking -float 2.5
+defaults write NSGlobalDomain com.apple.trackpad.scaling -float 2.5
+
+defaults write NSGlobalDomain KeyRepeat -int 2
+defaults write NSGlobalDomain InitialKeyRepeat -int 15
+
+defaults write com.google.Chrome AppleEnableSwipeNavigateWithScrolls -bool false
+
+defaults write com.apple.dock autohide -bool true
+
+echo "Restarting affected macOS services..."
+killall Dock Finder SystemUIServer 2>/dev/null || true
+
+echo "macos install: done. Some changes may still require a logout or restart."

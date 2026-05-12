@@ -1,0 +1,22 @@
+[user]
+	name = Francisco Caballero
+	email = fjcero@gmail.com
+
+[core]
+	excludesfile = ~/.gitignore_global
+
+[init]
+	defaultBranch = main
+
+[rerere]
+	enabled = true
+
+[fetch]
+	prune = true
+
+[pull]
+	ff = only
+
+# Uncomment to layer machine-local git settings (file can be empty):
+# [include]
+#	path = .config/git/local.gitconfig

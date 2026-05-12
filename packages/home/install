@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# packages/home/install - apply repo home/ into $HOME, then common post-steps.
+
+set -euo pipefail
+
+export DOTFILES_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# shellcheck source=../../packages/lib.sh
+source "$DOTFILES_ROOT/packages/lib.sh"
+
+echo "Applying home/ ..."
+dotfiles_apply_home
+
+if [[ -d "$HOME/.ssh" ]]; then
+  chmod 700 "$HOME/.ssh"
+  echo "home install: chmod 700 $HOME/.ssh"
+fi
+
+ZINIT_HOME="${ZINIT_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/zinit/zinit.git}"
+if [[ -f "$ZINIT_HOME/zinit.zsh" ]] && command -v zsh >/dev/null 2>&1; then
+  echo "home install: compiling zinit snippets (best-effort)..."
+  zsh -fc "source '$ZINIT_HOME/zinit.zsh' && zinit compile" 2>/dev/null || true
+fi
+
+echo "home install: done."

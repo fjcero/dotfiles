@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# packages/macos/configs - inventory for macOS defaults export (sourced by export; run directly for --list).
+
+set -euo pipefail
+
+DEFAULTS_DOMAINS=(
+  "NSGlobalDomain"
+  "com.apple.AppleMultitouchTrackpad"
+  "com.apple.driver.AppleBluetoothMultitouch.trackpad"
+  "com.apple.dock"
+  "com.apple.finder"
+  "com.apple.screencapture"
+  "com.apple.spaces"
+  "com.apple.symbolichotkeys"
+  "com.apple.controlcenter"
+  "com.apple.menuextra.clock"
+  "com.google.Chrome"
+  "com.apple.Terminal"
+  "com.apple.dt.Xcode"
+)
+
+# App config snapshots (git/ssh live under packages/home/export).
+CONFIG_FILES=(
+  "cursor|$HOME/Library/Application Support/Cursor/User/settings.json"
+  "cursor|$HOME/Library/Application Support/Cursor/User/keybindings.json"
+  "vscode|$HOME/Library/Application Support/Code/User/settings.json"
+  "vscode|$HOME/Library/Application Support/Code/User/keybindings.json"
+  "vscode|$HOME/Library/Application Support/Code/User/snippets"
+  "iterm2|$HOME/Library/Preferences/com.googlecode.iterm2.plist"
+  "ghostty|$HOME/Library/Application Support/com.mitchellh.ghostty/config"
+)
+
+list_macos_configs() {
+  local entry app source
+
+  echo "Defaults domains:"
+  printf '  %s\n' "${DEFAULTS_DOMAINS[@]}"
+
+  echo
+  echo "Config files (macos package export):"
+  for entry in "${CONFIG_FILES[@]}"; do
+    app="${entry%%|*}"
+    source="${entry#*|}"
+    printf '  %-10s %s\n' "$app" "$source"
+  done
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  list_macos_configs
+fi

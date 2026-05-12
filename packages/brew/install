@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# packages/brew/install - Homebrew + bundle.
+
+set -euo pipefail
+
+export DOTFILES_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# shellcheck source=../../packages/lib.sh
+source "$DOTFILES_ROOT/packages/lib.sh"
+
+echo "Installing Homebrew stack..."
+
+if ! command -v brew >/dev/null 2>&1; then
+  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+fi
+
+ensure_brew_shellenv
+
+brewfile="$DOTFILES_ROOT/packages/brew/Brewfile"
+brew_bundle_install "$brewfile"
+
+if [[ -f "$DOTFILES_ROOT/packages/brew/Brewfile.local" ]]; then
+  echo "Applying Brewfile.local..."
+  brew_bundle_install "$DOTFILES_ROOT/packages/brew/Brewfile.local"
+fi
+
+echo "brew install: done."

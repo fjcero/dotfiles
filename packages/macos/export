@@ -1,0 +1,170 @@
+#!/usr/bin/env bash
+# packages/macos/export - defaults + system inventory + selected app configs.
+#
+# Usage:
+#   ./packages/macos/export --output /path/to/exports/macos
+#   ./packages/macos/export --output ... --list
+#   ./packages/macos/export --output ... --skip-defaults --skip-config-files --skip-system --skip-system-profiler
+
+set -euo pipefail
+
+export DOTFILES_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+pkg_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=./configs
+source "$pkg_dir/configs"
+
+export_dir=""
+include_defaults=1
+include_config_files=1
+include_system=1
+include_system_profiler=1
+
+usage() {
+  sed -n '2,10p' "$0"
+}
+
+safe_name_for_domain() {
+  local domain="$1"
+  printf '%s' "${domain//\//_}"
+}
+
+relative_home_path() {
+  local source="$1"
+  local relative_path
+  relative_path="${source/#"$HOME"\//}"
+  relative_path="${relative_path#/}"
+  printf '%s' "$relative_path"
+}
+
+prepare_export_dir() {
+  mkdir -p "$export_dir"
+  rm -rf "$export_dir/apps" "$export_dir/defaults" "$export_dir/system"
+  mkdir -p "$export_dir/defaults" "$export_dir/system" "$export_dir/apps"
+}
+
+export_defaults_domain() {
+  local domain="$1"
+  local safe_name
+  safe_name="$(safe_name_for_domain "$domain")"
+  if defaults read "$domain" >"$export_dir/defaults/$safe_name.txt" 2>/dev/null; then
+    defaults export "$domain" "$export_dir/defaults/$safe_name.plist" 2>/dev/null || true
+  else
+    rm -f "$export_dir/defaults/$safe_name.txt"
+  fi
+}
+
+copy_config_if_exists() {
+  local app="$1"
+  local source="$2"
+  local relative_path
+  local destination
+
+  if [[ ! -e "$source" ]]; then
+    return
+  fi
+
+  relative_path="$(relative_home_path "$source")"
+  destination="$export_dir/apps/$app/$relative_path"
+  mkdir -p "$(dirname "$destination")"
+  rm -rf "$destination"
+  cp -R "$source" "$destination"
+}
+
+export_system_inventory() {
+  local applications_file="$export_dir/system/applications.txt"
+
+  if command -v mas >/dev/null 2>&1; then
+    mas list >"$export_dir/system/mas-apps.txt"
+  fi
+
+  if command -v displayplacer >/dev/null 2>&1; then
+    displayplacer list >"$export_dir/system/displayplacer.txt"
+  fi
+
+  : >"$applications_file"
+  if [[ -d "/Applications" ]]; then
+    ls -1 "/Applications" >>"$applications_file"
+  fi
+  if [[ -d "$HOME/Applications" ]]; then
+    ls -1 "$HOME/Applications" >>"$applications_file"
+  fi
+
+  sw_vers >"$export_dir/system/sw_vers.txt"
+
+  if [[ "$include_system_profiler" -eq 1 ]]; then
+    system_profiler SPHardwareDataType SPDisplaysDataType >"$export_dir/system/system_profiler.txt"
+  fi
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --help|-h)
+      usage
+      exit 0
+      ;;
+    --list)
+      list_macos_configs
+      exit 0
+      ;;
+    --output|-o)
+      if [[ $# -lt 2 ]]; then
+        echo "Missing value for $1" >&2
+        exit 1
+      fi
+      export_dir="$2"
+      shift 2
+      ;;
+    --skip-defaults)
+      include_defaults=0
+      shift
+      ;;
+    --skip-config-files)
+      include_config_files=0
+      shift
+      ;;
+    --skip-system)
+      include_system=0
+      shift
+      ;;
+    --skip-system-profiler)
+      include_system_profiler=0
+      shift
+      ;;
+    -*)
+      echo "Unknown option: $1" >&2
+      usage >&2
+      exit 1
+      ;;
+    *)
+      export_dir="$1"
+      shift
+      ;;
+  esac
+done
+
+if [[ -z "$export_dir" ]]; then
+  echo "Usage: $0 --output <dir> [options]" >&2
+  exit 1
+fi
+
+echo "Exporting macOS package to: $export_dir"
+prepare_export_dir
+
+if [[ "$include_defaults" -eq 1 ]]; then
+  for domain in "${DEFAULTS_DOMAINS[@]}"; do
+    export_defaults_domain "$domain"
+  done
+fi
+
+if [[ "$include_config_files" -eq 1 ]]; then
+  for entry in "${CONFIG_FILES[@]}"; do
+    copy_config_if_exists "${entry%%|*}" "${entry#*|}"
+  done
+fi
+
+if [[ "$include_system" -eq 1 ]]; then
+  export_system_inventory
+fi
+
+echo "macos export: done."
+echo "Review before sharing; exports may contain local paths or account names."
