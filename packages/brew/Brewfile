@@ -1,28 +1,33 @@
 tap "anomalyco/tap"
 tap "jandedobbeleer/oh-my-posh"
+
 brew "atuin"
 brew "awscli"
 brew "curl"
 brew "direnv"
 brew "eza"
+brew "fastfetch"
 brew "fnm"
 brew "fzf"
 brew "libpq", link: true
 brew "midnight-commander"
 brew "neovim"
-brew "starship"
 brew "stow"
 brew "unzip"
 brew "zinit"
 brew "zoxide"
 brew "anomalyco/tap/opencode"
 brew "jandedobbeleer/oh-my-posh/oh-my-posh"
-cask "1password"
-cask "cursor"
-cask "docker-desktop"
+
+## Fonts
 cask "font-jetbrains-mono"
 cask "font-jetbrains-mono-nerd-font"
 cask "font-sf-mono"
+
+## Apps
+cask "1password"
+cask "cursor"
+cask "docker-desktop"
 cask "font-sf-mono-for-powerline"
 cask "ghostty"
 cask "google-chrome"
@@ -31,5 +36,7 @@ cask "raycast"
 cask "session-manager-plugin"
 cask "slack"
 cask "zoom"
+
+## Cursor extensions
 vscode "anysphere.remote-ssh"
 vscode "tamasfe.even-better-toml"
