@@ -2,12 +2,12 @@
 
 Personal macOS dotfiles. Two entry points:
 
-- `./bootstrap.sh` applies this repo to the machine: Homebrew + Brewfile, macOS defaults, copies `home/` into `$HOME`, enables Touch ID for `sudo`.
-- `./export.sh` pulls live state back into the repo: refreshes `packages/brew/Brewfile`, rewrites `packages/macos/defaults` in place, and copies a curated subset of `$HOME` into `exports/home/`.
+- **`./bootstrap.sh`** — preflights **Node** for the CLI, runs **`npm ci`** in **`cli/`**, then the **dotfiles CLI** (`citty` + `@clack/prompts`) drives **`packages/<name>/install`** (Homebrew bundles, macOS defaults, `home/` → `$HOME` via rsync, Touch ID for `sudo`).
+- **`./export.sh`** — pulls live state back into the repo (same as before). You can also run **`npm run start -- sync`** from **`cli/`** (see [CONTRIBUTING.md](CONTRIBUTING.md)).
 
 ## Quick start
 
-[`./bootstrap.sh`](bootstrap.sh) must run from a checkout on disk (it loads `packages/lib.sh` next to the script). Do not pipe `bootstrap.sh` straight into `bash` from `curl`.
+[`./bootstrap.sh`](bootstrap.sh) must run from a checkout on disk. Do not pipe `bootstrap.sh` straight into `bash` from `curl`.
 
 Already have the repo (any path):
 
@@ -34,55 +34,68 @@ Non-GitHub or SSH remotes: set `GIT_REPO_URL` instead of `DOTFILES_REPO` (full c
 
 ## What `./bootstrap.sh` does
 
-In order:
+1. **Preflight** — If `node` is missing: install **Homebrew** if needed, then apply **`packages/brew/Brewfile.bootstrap`** (minimal `brew "node"`) or **`brew install node`** if the bootstrap file is absent.
+2. **`npm ci`** in **`cli/`** — installs CLI dependencies (including `tsx`, `citty`, `@clack/prompts`).
+3. **CLI `install`** — On a TTY, **Clack** asks which packages to run (default: all). Then runs each selected **`packages/<name>/install`** with **`stdio: 'inherit'`** in order **brew → macos → home → sudo**.
 
-1. **brew** — installs Homebrew if missing, then applies [`packages/brew/Brewfile`](packages/brew/Brewfile). A `Brewfile.local` next to it is also picked up if present.
-2. **macos** — applies the `defaults write …` commands in [`packages/macos/defaults`](packages/macos/defaults). Optionally sets the hostname via `DOTFILES_HOSTNAME`.
-3. **home** — rsyncs the tree under `home/` into `$HOME`, fixes `~/.ssh` perms, switches your login shell to zsh if needed.
-4. **sudo** — enables Touch ID for `sudo` (prompts for your password once).
+Use **`./bootstrap.sh --`** or pass flags through to the CLI: **`./bootstrap.sh -- install --yes`** for non-interactive installs.
 
-Each step is a script at `packages/<name>/install`. Filter with `DOTFILES_PACKAGES=...` (allow list) and `DOTFILES_SKIP=...` (deny list; skip wins over allow).
+### Brew bundles
 
-## What `./export.sh` does
+- **`packages/brew/Brewfile`** — main formulae and casks (same as before).
+- **`packages/brew/Brewfile.bootstrap`** — **only** `brew "node"` for first-run CLI; not applied again by the **`brew`** package step unless you list it in **`DOTFILES_BREWFILES`**.
+- **`DOTFILES_BREWFILES`** — optional comma-separated basenames under **`packages/brew/`** (default **`Brewfile`**). Example: `Brewfile,Brewfile.apps` if you split heavy casks into a second file.
+- **`Brewfile.local`** next to **`Brewfile`** is still applied automatically after the listed bundles.
 
-1. **brew** — `brew bundle dump --force` over [`packages/brew/Brewfile`](packages/brew/Brewfile).
-2. **macos** — rewrites values in [`packages/macos/defaults`](packages/macos/defaults) to match the current live system. Only existing keys are updated; lines are never added or removed.
-3. **home** — copies a curated subset of `$HOME` into `exports/home/`: `.gitconfig`, `.gitignore_global`, and `.ssh/config`. **Private SSH keys are never copied.**
+## What `./export.sh` and `sync` do
 
-`./export.sh --timestamp` puts the `home` snapshot under `exports/<YYYYmmdd-HHMMSS>/home/`. The `brew` and `macos` exports always write in place; timestamping does not affect them.
+Same as before: **`./export.sh`** refreshes **`packages/brew/Brewfile`**, rewrites **`packages/macos/defaults`**, snapshots curated **`$HOME`** files under **`exports/home/`**.
+
+From the repo after `npm ci` in **`cli/`**:
+
+```bash
+DOTFILES_ROOT="$PWD" npm run start --prefix cli -- sync
+DOTFILES_ROOT="$PWD" npm run start --prefix cli -- sync -- --timestamp
+```
+
+(`--` separates npm args from script args when using `npm run start`.)
 
 ## Where things live
 
-- `home/` — Files copied verbatim into `$HOME`. Layout is a single flat tree (e.g. `home/.zshrc`, `home/.config/zsh/aliases.zsh`), not per-app subfolders.
-- `packages/<name>/` — One directory per concern. Holds an executable `install` (and optional `export`) plus any small data files (e.g. [`brew/Brewfile`](packages/brew/Brewfile), [`macos/defaults`](packages/macos/defaults)).
-- `packages/lib.sh` + `packages/helpers/` — Shared shell helpers organized by responsibility (filtering, package discovery, orchestration, I/O, brew). Loaded by entry scripts and package scripts.
-- `exports/` — Where `./export.sh` writes the `home` snapshot. The `brew` and `macos` exports overwrite their in-repo source files directly.
+- **`home/`** — Files copied into `$HOME` via **`packages/home/install`** (`rsync -a`; **`/usr/bin/rsync`** on macOS is enough).
+- **`packages/<name>/`** — One directory per concern: executable **`install`** (and optional **`export`**), plus data files (e.g. **`packages/brew/Brewfile`**).
+- **`cli/`** — TypeScript CLI: **`src/index.ts`**, **`package-lock.json`** committed for reproducible **`npm ci`**.
+- **`packages/lib.sh`** + **`packages/helpers/`** — Shared shell helpers (filtering, brew, orchestration). Still sourced by package scripts.
+- **`exports/`** — Output of the **`home`** export step.
 
 ## How `home/` is applied
 
-`packages/home/install` runs `rsync -a home/ $HOME/`. It also `chmod 700`s `~/.ssh` and switches your login shell to zsh if it isn't already.
-
-Set `DOTFILES_RSYNC_DELETE=1` to pass `--delete` to rsync. That removes files in `$HOME` that no longer exist in `home/` — risky; only enable if you understand the consequences.
+`packages/home/install` runs `rsync` (see **`DOTFILES_RSYNC_DELETE`**). SSH perms and login shell behavior are unchanged.
 
 ## Personalization
 
-For machine-specific tweaks you don't want in the repo, use the normal config-include mechanisms: `~/.config/zsh/local.zsh`, `git config --global include.path …`, or a `Brewfile.local` next to [`packages/brew/Brewfile`](packages/brew/Brewfile) (picked up automatically by `packages/brew/install`).
+Use **`~/.config/zsh/local.zsh`**, **`git config --global include.path …`**, **`Brewfile.local`**, and **`DOTFILES_SKIP`** / **`DOTFILES_PACKAGES`** so the wizard and scripts never fight intentional local divergence.
 
 ## Common environment knobs
 
-- `DOTFILES_REPO` — For [`first-install.sh`](first-install.sh): GitHub `owner/repo` slug; expands to `https://github.com/owner/repo.git`. Use the same value in `raw.githubusercontent.com/…/first-install.sh` and in `env` so curl and clone stay aligned. This README uses `fjcero/dotfiles` in the examples.
-- `GIT_REPO_URL` — Full clone URL when `DOTFILES_REPO` is not enough (non-`github.com` HTTPS, SSH, etc.). If set, it overrides `DOTFILES_REPO`.
-- `DOTFILES_CLONE_DIR` — Where `first-install.sh` puts the clone (default `~/dotfiles`).
-- `DOTFILES_PACKAGES` / `DOTFILES_SKIP` — Comma lists to allow or skip install steps (skip wins).
-- `DOTFILES_RSYNC_DELETE` — Passed through to the `home` install step; see [How `home/` is applied](#how-home-is-applied).
+- **`DOTFILES_REPO`** — For **`first-install.sh`**: GitHub `owner/repo` slug.
+- **`GIT_REPO_URL`** — Full clone URL when `DOTFILES_REPO` is not enough.
+- **`DOTFILES_CLONE_DIR`** — Clone destination (default `~/dotfiles`).
+- **`DOTFILES_PACKAGES`** / **`DOTFILES_SKIP`** — Comma lists for install steps (skip wins). Set either (or use **`install --yes`**) to skip Clack in automation.
+- **`DOTFILES_BREWFILES`** — Comma-separated brew bundle files under **`packages/brew/`** (default **`Brewfile`**).
+- **`DOTFILES_RSYNC_DELETE`** — Passed to the **`home`** install step.
+- **`DOTFILES_HOSTNAME`** — Passed through to **`macos`** install when set.
 
-Full list: comments in [`bootstrap.sh`](bootstrap.sh) and [`packages/lib.sh`](packages/lib.sh).
+Full list: comments in [`bootstrap.sh`](bootstrap.sh), [`packages/lib.sh`](packages/lib.sh), and [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## Commands
 
-| Command                                  | Purpose                                                                                                                                              |
-| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `./bootstrap.sh`                         | Homebrew + Brewfile, macOS defaults, apply `home/` into `$HOME`, enable Touch ID for `sudo`.                                                         |
-| `./export.sh`                            | Refresh [`packages/brew/Brewfile`](packages/brew/Brewfile), rewrite [`packages/macos/defaults`](packages/macos/defaults) in place, snapshot a subset of `$HOME` under `exports/home/`. |
-| `./export.sh --timestamp`                | Same, but the `home` snapshot goes under `exports/<YYYYmmdd-HHMMSS>/home/`. `brew` and `macos` still rewrite their in-repo files.                    |
-| `./packages/macos/export --output <dir>` | Rewrite `<dir>/defaults` with the live values of every key in [`packages/macos/defaults`](packages/macos/defaults). Standalone variant of the macOS export step. |
+- **`./bootstrap.sh`** — Preflight Node → **`npm ci`** in **`cli/`** → interactive or non-interactive **`install`**.
+- **`./bootstrap.sh -- install --yes`** — Non-interactive bootstrap (same env knobs as above).
+- **`./export.sh`** — Refresh Brewfile, macOS defaults in place, snapshot curated home files under **`exports/home/`**.
+- **`./export.sh --timestamp`** — Same, but timestamped export root for the **`home`** snapshot.
+- **`npm run start --prefix cli -- sync`** — Wrapper around **`./export.sh`** (from repo root; set **`DOTFILES_ROOT`**).
+
+## Contributing
+
+See **[CONTRIBUTING.md](CONTRIBUTING.md)** for adding packages, **`DOTFILES_EXTRA_PACKAGES_DIRS`**, and notes on future **Linux** / multi-OS layout.

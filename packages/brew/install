@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 # packages/brew/install - Homebrew + bundle.
+#
+# Environment:
+#   DOTFILES_BREWFILES   Optional comma-separated basenames under packages/brew/
+#                        (e.g. Brewfile or Brewfile,Brewfile.apps). Default: Brewfile
+#                        Bootstrap already applies Brewfile.bootstrap before the CLI;
+#                        include Brewfile.bootstrap here only if you need to re-run it.
 
 set -euo pipefail
 
@@ -14,12 +20,29 @@ fi
 
 ensure_brew_shellenv
 
-brewfile="$DOTFILES_ROOT/packages/brew/Brewfile"
-brew_bundle_install "$brewfile"
+brew_dir="$DOTFILES_ROOT/packages/brew"
+files_raw="${DOTFILES_BREWFILES:-Brewfile}"
+IFS=',' read -r -a brew_files <<< "$files_raw"
 
-if [[ -f "$DOTFILES_ROOT/packages/brew/Brewfile.local" ]]; then
+for entry in "${brew_files[@]}"; do
+  f="${entry//[[:space:]]/}"
+  [[ -z "$f" ]] && continue
+  if [[ "$f" == *'/'* ]]; then
+    echo "brew/install: refusing non-basename in DOTFILES_BREWFILES: $f" >&2
+    exit 1
+  fi
+  brewfile="$brew_dir/$f"
+  if [[ ! -f "$brewfile" ]]; then
+    echo "brew/install: missing $brewfile (from DOTFILES_BREWFILES)" >&2
+    exit 1
+  fi
+  echo "==> brew bundle: $f"
+  brew_bundle_install "$brewfile"
+done
+
+if [[ -f "$brew_dir/Brewfile.local" ]]; then
   echo "Applying Brewfile.local..."
-  brew_bundle_install "$DOTFILES_ROOT/packages/brew/Brewfile.local"
+  brew_bundle_install "$brew_dir/Brewfile.local"
 fi
 
 echo "brew install: done."

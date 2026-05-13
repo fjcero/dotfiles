@@ -1,0 +1,19 @@
+{
+  "name": "dotfiles-cli",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Interactive dotfiles bootstrap (citty + @clack/prompts)",
+  "scripts": {
+    "start": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@clack/prompts": "^1.4.0",
+    "citty": "^0.2.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

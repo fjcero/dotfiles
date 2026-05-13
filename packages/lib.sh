@@ -20,6 +20,7 @@
 #   DOTFILES_EXPORT_PACKAGES / DOTFILES_EXPORT_SKIP   same, but for export (falls back to the above)
 #   DOTFILES_EXTRA_PACKAGES_DIRS                      colon-separated roots for out-of-tree packages
 #   DOTFILES_EXPORT_ROOT                              base dir for the `home` export (default: $DOTFILES_ROOT/exports)
+#   DOTFILES_BREWFILES                                comma-separated bundle filenames under packages/brew/ (default: Brewfile)
 
 [[ -n "${__DOTFILES_LIB_LOADED:-}" ]] && return 0
 __DOTFILES_LIB_LOADED=1

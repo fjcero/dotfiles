@@ -1,0 +1,3 @@
+# Minimal bundle for first-run CLI only (Node). Applied by bootstrap.sh before npm ci.
+# Main formulae and casks stay in Brewfile; do not duplicate heavy installs here.
+brew "node"
