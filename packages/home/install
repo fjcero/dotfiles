@@ -1,24 +1,54 @@
 #!/usr/bin/env bash
-# packages/home/install - apply repo home/ into $HOME, then common post-steps.
+# packages/home/install - rsync repo home/ into $HOME, then common post-steps (ssh perms, login shell).
+#
+# Environment:
+#   DOTFILES_ROOT          Repo root (set by bootstrap / dotfiles_install_package).
+#   DOTFILES_RSYNC_DELETE  If 1, rsync passes --delete toward $HOME (dangerous; default off).
 
 set -euo pipefail
 
 export DOTFILES_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-# shellcheck source=../../packages/lib.sh
-source "$DOTFILES_ROOT/packages/lib.sh"
 
-echo "Applying home/ ..."
-dotfiles_apply_home
+if [[ -z "${DOTFILES_ROOT:-}" ]] || [[ ! -d "$DOTFILES_ROOT" ]]; then
+  echo "home/install: DOTFILES_ROOT must be the dotfiles repository root." >&2
+  exit 1
+fi
 
+src="$DOTFILES_ROOT/home"
+if [[ ! -d "$src" ]]; then
+  echo "home/install: no $src; skipping."
+  exit 0
+fi
+
+if ! command -v rsync >/dev/null 2>&1; then
+  echo "home/install: rsync not found; install rsync to apply home/." >&2
+  exit 1
+fi
+
+rsync_args=(-a --exclude='README.md')
+if [[ "${DOTFILES_RSYNC_DELETE:-0}" == "1" ]]; then
+  rsync_args+=(--delete)
+fi
+
+## RSYNC
+echo "Applying home/ -> \$HOME via rsync (${rsync_args[*]}) ..."
+rsync "${rsync_args[@]}" "$src/" "$HOME/"
+
+## SSH permissions
 if [[ -d "$HOME/.ssh" ]]; then
   chmod 700 "$HOME/.ssh"
   echo "home install: chmod 700 $HOME/.ssh"
 fi
 
-ZINIT_HOME="${ZINIT_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/zinit/zinit.git}"
-if [[ -f "$ZINIT_HOME/zinit.zsh" ]] && command -v zsh >/dev/null 2>&1; then
-  echo "home install: compiling zinit snippets (best-effort)..."
-  zsh -fc "source '$ZINIT_HOME/zinit.zsh' && zinit compile" 2>/dev/null || true
+# Set login shell to the system zsh (macOS and most Linux).
+# Also, zinit compiles on first run.
+if [[ "${SHELL:-}" != */zsh ]] && [[ -x /usr/bin/zsh ]]; then
+  echo "home install: setting login shell to /usr/bin/zsh ..."
+  if chsh -s /usr/bin/zsh 2>/dev/null; then
+    echo "home install: login shell is zsh (new login sessions)."
+  else
+    echo "home install: chsh failed (often needs a password). Run: chsh -s /usr/bin/zsh" >&2
+  fi
 fi
 
 echo "home install: done."

@@ -12,10 +12,6 @@
 #   DOTFILES_SKIP          Optional comma-separated deny list (skip wins over allow).
 #   DOTFILES_EXTRA_PACKAGES_DIRS  Colon-separated roots; each has packages/<name>/install (or export).
 #
-# Apply repo home/ into $HOME:
-#   DOTFILES_HOME_MODE     rsync (default) or stow.
-#   DOTFILES_RSYNC_DELETE  If 1 with rsync mode, pass --delete to rsync (dangerous on $HOME).
-#
 # Export-only (falls back to DOTFILES_* when unset):
 #   DOTFILES_EXPORT_PACKAGES
 #   DOTFILES_EXPORT_SKIP
@@ -123,44 +119,6 @@ brew_bundle_install() {
     return 1
   fi
   HOMEBREW_NO_AUTO_UPDATE=1 brew bundle install --file="$brewfile"
-}
-
-# Copy or symlink repo home/ into $HOME (excludes README.md and .stow-local-ignore from rsync).
-dotfiles_apply_home() {
-  dotfiles_require_root || return 1
-  local src="$DOTFILES_ROOT/home"
-  [[ -d "$src" ]] || {
-    echo "No $src; skipping home apply."
-    return 0
-  }
-
-  local mode="${DOTFILES_HOME_MODE:-rsync}"
-  case "$mode" in
-    rsync)
-      if ! command -v rsync >/dev/null 2>&1; then
-        echo "rsync not found; install rsync or set DOTFILES_HOME_MODE=stow" >&2
-        return 1
-      fi
-      local rsync_args=(-a --exclude='README.md' --exclude='.stow-local-ignore')
-      if [[ "${DOTFILES_RSYNC_DELETE:-0}" == "1" ]]; then
-        rsync_args+=(--delete)
-      fi
-      echo "Applying home/ -> \$HOME via rsync (${rsync_args[*]}) ..."
-      rsync "${rsync_args[@]}" "$src/" "$HOME/"
-      ;;
-    stow)
-      if ! command -v stow >/dev/null 2>&1; then
-        echo "stow not found; install gnu-stow or set DOTFILES_HOME_MODE=rsync" >&2
-        return 1
-      fi
-      echo "Stowing package home -> \$HOME ..."
-      stow -R -v -t "$HOME" -d "$DOTFILES_ROOT" home
-      ;;
-    *)
-      echo "Unknown DOTFILES_HOME_MODE=$mode (use rsync or stow)" >&2
-      return 1
-      ;;
-  esac
 }
 
 dotfiles_install_package() {

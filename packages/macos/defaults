@@ -1,0 +1,33 @@
+# packages/macos/defaults - macOS defaults to apply (sourced by install, parsed by export).
+# Reference: https://macos-defaults.com/
+
+# --- Trackpad ---
+defaults write NSGlobalDomain com.apple.trackpad.scaling -float 2.5
+defaults write com.apple.AppleMultitouchTrackpad Clicking -bool true
+
+# --- Accessibility: Cmd + two-finger scroll to zoom ---
+defaults write com.apple.universalaccess closeViewScrollWheelToggle -bool true
+defaults write com.apple.universalaccess closeViewScrollWheelModifiersInt -int 1048576
+defaults write com.apple.AppleMultitouchTrackpad HIDScrollZoomModifierMask -int 1048576
+defaults write com.apple.driver.AppleBluetoothMultitouch.trackpad HIDScrollZoomModifierMask -int 1048576
+
+# --- Keyboard ---
+defaults write NSGlobalDomain KeyRepeat -int 2
+defaults write NSGlobalDomain InitialKeyRepeat -int 15
+
+# --- Dock ---
+defaults write com.apple.dock autohide -bool true
+defaults write com.apple.dock magnification -bool true
+defaults write com.apple.dock largesize -int 40
+defaults write com.apple.dock autohide-delay -float 0
+defaults write com.apple.dock autohide-time-modifier -float 0.3
+defaults write com.apple.dock tilesize -int 30
+
+# --- Finder ---
+defaults write com.apple.finder AppleShowAllFiles -bool true
+defaults write com.apple.finder ShowPathbar -bool true
+defaults write com.apple.finder ShowStatusBar -bool true
+defaults write com.apple.finder FXPreferredViewStyle -string clmv
+
+# --- Chrome ---
+defaults write com.google.Chrome AppleEnableSwipeNavigateWithScrolls -bool false

@@ -10,13 +10,12 @@ home/
   .ssh/config
   .config/zsh/history.zsh
   .config/zsh/aliases.zsh
-  .stow-local-ignore
   README.md
 ```
 
-`README.md` and `.stow-local-ignore` are repo metadata only; they are not synced into `$HOME` when using **rsync**, and Stow ignores them via `.stow-local-ignore`.
+`README.md` is repo-only; [`packages/home/install`](../packages/home/install) does not copy it into **`$HOME`**.
 
-How files are applied (**`rsync` by default** vs optional **`stow`**), environment variables, and install order are documented in the **[root `README.md`](../README.md)**.
+Install order and other environment variables are in the **[root `README.md`](../README.md)**.
 
 ## Export
 

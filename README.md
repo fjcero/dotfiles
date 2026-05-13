@@ -46,18 +46,18 @@ flowchart LR
   macos --> homePkg
 ```
 
-**`./bootstrap.sh`** runs **`brew` → `macos` → `home`** in that order (three **`dotfiles_install_package`** calls in [`bootstrap.sh`](bootstrap.sh); helper in [`packages/lib.sh`](packages/lib.sh)). **`home`** applies `home/` into `$HOME` (rsync by default), fixes `~/.ssh` permissions when present, and may run a quick zinit compile.
+**`./bootstrap.sh`** runs **`brew` → `macos` → `home`** in that order (three **`dotfiles_install_package`** calls in [`bootstrap.sh`](bootstrap.sh); helper in [`packages/lib.sh`](packages/lib.sh)). **`home`** applies `home/` into `$HOME` (rsync), fixes `~/.ssh` permissions when present, and may run **`chsh -s /usr/bin/zsh`** when your login shell is not already zsh.
 
 ## Where things live
 
 - **`home/`** — Files as they should appear under `$HOME` (e.g. `.zshrc`, `.gitconfig`, `.ssh/config`).
-- **`packages/lib.sh`** — Shared shell helpers: **`dotfiles_install_package`**, **`dotfiles_run_exports`**, **`dotfiles_apply_home`**, Brew helpers, allow/skip lists.
-- **`packages/<name>/`** — One directory per concern: executable **`install`** (and optional **`export`**) plus any small data files (e.g. **`brew/Brewfile`**, **`macos/configs`**). **`bootstrap.sh`** runs **`brew`**, **`macos`**, **`home`** in order; **`export.sh`** runs **`brew`**, **`macos`**, **`home`** exports by default. **`packages/sudo/`** and **`packages/hosts/`** exist for optional manual or scripted use (not invoked by **`./bootstrap.sh`**).
+- **`packages/lib.sh`** — Shared shell helpers: **`dotfiles_install_package`**, **`dotfiles_run_exports`**, Brew helpers, allow/skip lists.
+- **`packages/<name>/`** — One directory per concern: executable **`install`** (and optional **`export`**) plus any small data files (e.g. **`brew/Brewfile`**). **`bootstrap.sh`** runs **`brew`**, **`macos`**, **`home`** in order; **`export.sh`** runs **`brew`**, **`macos`**, **`home`** exports by default. **`packages/sudo/`** and **`packages/hosts/`** exist for optional manual or scripted use (not invoked by **`./bootstrap.sh`**).
 - **`exports/`** — Output from **`./export.sh`** for **macOS** and **home** snapshots (defaults dump, copies from `$HOME`). The **brew** export updates **[`packages/brew/Brewfile`](packages/brew/Brewfile)** in the repo (not under **`exports/`**).
 
 ## Applying `home/`
 
-By default **`DOTFILES_HOME_MODE`** is **rsync** (real files; `README.md` and `.stow-local-ignore` in `home/` are skipped). Use **`stow`** for symlinks. Set **`DOTFILES_RSYNC_DELETE=1`** only if you intend rsync **`--delete`** on `$HOME` (risky).
+[`packages/home/install`](packages/home/install) runs **`rsync`** from **`home/`** into **`$HOME`** (skips **`README.md`**). Set **`DOTFILES_RSYNC_DELETE=1`** only if you intend **`rsync --delete`** toward **`$HOME`** (risky).
 
 ## Common environment knobs
 
@@ -65,7 +65,7 @@ By default **`DOTFILES_HOME_MODE`** is **rsync** (real files; `README.md` and `.
 - **`GIT_REPO_URL`** — Full clone URL when **`DOTFILES_REPO`** is not enough (non-`github.com` HTTPS, SSH, etc.). If set, it overrides **`DOTFILES_REPO`**.
 - **`DOTFILES_CLONE_DIR`** — Where `first-install.sh` puts the clone (default **`~/dotfiles`**).
 - **`DOTFILES_PACKAGES` / `DOTFILES_SKIP`** — Comma lists to allow or skip install steps (skip wins).
-- **`DOTFILES_HOME_MODE`**, **`DOTFILES_RSYNC_DELETE`** — See above.
+- **`DOTFILES_RSYNC_DELETE`** — Passed through to the **home** install step; see [Applying `home/`](#applying-home).
 
 Full list: comments in [`bootstrap.sh`](bootstrap.sh) and [`packages/lib.sh`](packages/lib.sh).
 
@@ -76,6 +76,6 @@ Full list: comments in [`bootstrap.sh`](bootstrap.sh) and [`packages/lib.sh`](pa
 | `./bootstrap.sh`                 | Homebrew + Brewfile, macOS defaults, then apply `home/` into `$HOME`.                                            |
 | `./export.sh`                    | Refresh **`packages/brew/Brewfile`** via **`brew bundle dump`**; write **macOS** + **home** exports under **`exports/`**. |
 | `./export.sh --timestamp`        | Same, but macOS/home go under **`exports/<YYYYmmdd-HHMMSS>/`** (brew still updates **`packages/brew/Brewfile`** only).        |
-| `./packages/macos/export --list` | List `defaults` domains/keys from [`packages/macos/configs`](packages/macos/configs) (read-only; no export dir). |
+| `./packages/macos/export --output <dir>` | Snapshot current values of every key in [`packages/macos/install`](packages/macos/install) into `<dir>/defaults.sh` (diffable against install). |
 
 Personalization (local-only files, git includes, etc.): [`home/README.md`](home/README.md).

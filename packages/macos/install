@@ -1,21 +1,27 @@
 #!/usr/bin/env bash
-# packages/macos/install - apply curated macOS defaults.
+# packages/macos/install - apply macOS defaults and optional hostname.
+#
+# Optional:
+#   DOTFILES_HOSTNAME   Set HostName, LocalHostName, and ComputerName (requires sudo).
 
 set -euo pipefail
 
-export DOTFILES_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+pkg_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 echo "Configuring macOS defaults..."
 
-defaults write com.apple.AppleMultitouchTrackpad Tracking -float 2.5
-defaults write NSGlobalDomain com.apple.trackpad.scaling -float 2.5
+# --- Hostname (opt-in, needs sudo) ---
+if [[ -n "${DOTFILES_HOSTNAME:-}" ]]; then
+  echo "Setting hostname to: $DOTFILES_HOSTNAME (requires sudo)..."
+  sudo scutil --set HostName "$DOTFILES_HOSTNAME"
+  sudo scutil --set LocalHostName "$DOTFILES_HOSTNAME"
+  sudo scutil --set ComputerName "$DOTFILES_HOSTNAME"
+  sudo dscacheutil -flushcache
+  echo "Hostname set. May need a restart for all services to pick it up."
+fi
 
-defaults write NSGlobalDomain KeyRepeat -int 2
-defaults write NSGlobalDomain InitialKeyRepeat -int 15
-
-defaults write com.google.Chrome AppleEnableSwipeNavigateWithScrolls -bool false
-
-defaults write com.apple.dock autohide -bool true
+# Apply defaults from the defaults file
+source "$pkg_dir/defaults"
 
 echo "Restarting affected macOS services..."
 killall Dock Finder SystemUIServer 2>/dev/null || true
