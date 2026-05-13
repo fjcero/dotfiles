@@ -14,18 +14,22 @@ Already have the repo (any path):
 cd /path/to/dotfiles && ./bootstrap.sh
 ```
 
-Clone into `~/dotfiles` (change the path or GitHub URL if you want):
+Clone into `~/dotfiles` (change the path if you want). One variable keeps the GitHub slug in sync:
 
 ```bash
-git clone https://github.com/<YOU>/<dotfiles>.git ~/dotfiles && cd ~/dotfiles && ./bootstrap.sh
+DOTFILES_REPO=fjcero/dotfiles
+git clone "https://github.com/${DOTFILES_REPO}.git" ~/dotfiles && cd ~/dotfiles && ./bootstrap.sh
 ```
 
-First-time one-liner: clones then runs `bootstrap.sh` (pipe **only** [`first-install.sh`](first-install.sh) at repo root, not `bootstrap.sh`). Set your repo URL; default clone dir is `~/dotfiles`:
+First-time one-liner: pipe **only** [`first-install.sh`](first-install.sh) (never `bootstrap.sh`). Use the **same** `DOTFILES_REPO` in the `curl` URL and in `env` so the script you download and the tree you clone always match (fork? set `DOTFILES_REPO=you/your-fork` everywhere in that block). Default clone dir is **`~/dotfiles`** (`DOTFILES_CLONE_DIR` to override).
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/<YOU>/<dotfiles>/HEAD/first-install.sh \
-  | env GIT_REPO_URL='https://github.com/<YOU>/<dotfiles>.git' bash -s --
+DOTFILES_REPO=fjcero/dotfiles
+curl -fsSL "https://raw.githubusercontent.com/${DOTFILES_REPO}/main/first-install.sh" \
+  | env DOTFILES_REPO="$DOTFILES_REPO" bash -s --
 ```
+
+Non-GitHub or SSH remotes: set **`GIT_REPO_URL`** instead of **`DOTFILES_REPO`** (full clone URL); your `curl` URL should still point at the `first-install.sh` you trust (often the same repo’s raw file).
 
 Piping `bash` trusts TLS and the host; use a pinned branch or tag in the URL if you care.
 
@@ -63,6 +67,9 @@ By default **`DOTFILES_HOME_MODE`** is **rsync** (real files; `README.md` and `.
 
 ## Common environment knobs
 
+- **`DOTFILES_REPO`** — For [`first-install.sh`](first-install.sh): GitHub **`owner/repo`** slug; expands to **`https://github.com/owner/repo.git`**. Use the **same** value in `raw.githubusercontent.com/…/first-install.sh` and in `env` so curl and clone stay aligned. This README uses **`fjcero/dotfiles`** in the examples.
+- **`GIT_REPO_URL`** — Full clone URL when **`DOTFILES_REPO`** is not enough (non-`github.com` HTTPS, SSH, etc.). If set, it overrides **`DOTFILES_REPO`**.
+- **`DOTFILES_CLONE_DIR`** — Where `first-install.sh` puts the clone (default **`~/dotfiles`**).
 - **`DOTFILES_PACKAGES` / `DOTFILES_SKIP`** — Comma lists to allow or skip install steps (skip wins).
 - **`DOTFILES_SYSTEM=1`** — Also run `sudo` and `hosts` installs.
 - **`DOTFILES_HOME_MODE`**, **`DOTFILES_RSYNC_DELETE`** — See above.
