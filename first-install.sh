@@ -14,7 +14,7 @@
 #   DOTFILES_CLONE_DIR   Target directory (default: $HOME/dotfiles)
 #
 # Positional: if neither GIT_REPO_URL nor DOTFILES_REPO is set, the first argument may be a
-# full clone URL, git@… URL, or owner/repo; it is consumed and remaining args go to bootstrap.
+# full clone URL, git@… URL, or owner/repo; it is consumed and remaining args go to bootstrap.sh.
 
 set -euo pipefail
 
@@ -47,10 +47,13 @@ target="${DOTFILES_CLONE_DIR:-$HOME/dotfiles}"
 
 if [[ ! -e "$target" ]]; then
   mkdir -p "$(dirname "$target")"
+  echo "first-install: cloning $clone_url -> $target"
   git clone --depth 1 "$clone_url" "$target"
 elif [[ -d "$target/.git" ]]; then
+  echo "first-install: existing repo at $target (pull skipped on failure)"
   git -C "$target" pull --ff-only 2>/dev/null || true
 elif [[ -z "$(find "$target" -mindepth 1 -maxdepth 1 2>/dev/null | head -1)" ]]; then
+  echo "first-install: cloning $clone_url into empty $target"
   git clone --depth 1 "$clone_url" "$target"
 else
   echo "Refusing to clone: $target exists and is not a git repository." >&2

@@ -16,7 +16,7 @@ home/
 
 `README.md` and `.stow-local-ignore` are repo metadata only; they are not synced into `$HOME` when using **rsync**, and Stow ignores them via `.stow-local-ignore`.
 
-How files are applied (**`rsync` by default** vs optional **`stow`**), environment variables, and bootstrap order are documented in the **[root `README.md`](../README.md)**.
+How files are applied (**`rsync` by default** vs optional **`stow`**), environment variables, and install order are documented in the **[root `README.md`](../README.md)**.
 
 ## Export
 

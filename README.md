@@ -1,10 +1,10 @@
 # Dotfiles
 
-Versioned configs under [`home/`](home/) plus scripts that install Homebrew (from [`packages/brew/Brewfile`](packages/brew/Brewfile)), apply macOS defaults, copy or stow those files into `$HOME`, and optionally snapshot machine state with [`export.sh`](export.sh).
+Versioned configs under [`home/`](home/) plus [`bootstrap.sh`](bootstrap.sh) (Homebrew from [`packages/brew/Brewfile`](packages/brew/Brewfile), macOS defaults, apply configs to `$HOME`) and [`export.sh`](export.sh) for snapshots.
 
 ## Quick start
 
-`./bootstrap.sh` must run from a **checkout on disk** (it loads `packages/lib.sh` next to the script). Do **not** pipe `bootstrap.sh` straight into `bash` from `curl`.
+[`./bootstrap.sh`](bootstrap.sh) must run from a **checkout on disk** (it loads `packages/lib.sh` next to the script). Do **not** pipe `bootstrap.sh` straight into `bash` from `curl`.
 
 **Get the repo on disk — pick one:**
 
@@ -33,11 +33,7 @@ Non-GitHub or SSH remotes: set **`GIT_REPO_URL`** instead of **`DOTFILES_REPO`**
 
 Piping `bash` trusts TLS and the host; use a pinned branch or tag in the URL if you care.
 
-Optional privileged steps (`sudo`, `hosts` snippets) after you are in the repo:
-
-```bash
-DOTFILES_SYSTEM=1 ./bootstrap.sh
-```
+Privileged **`sudo`** / **`hosts`** installs are **not** part of **`./bootstrap.sh`**; run them from a separate script (e.g. **`sudo ./packages/sudo/install`** after reviewing it), or source **`packages/lib.sh`** and call **`dotfiles_install_package sudo`** or **`dotfiles_install_package hosts`** when you control allow/skip lists yourself.
 
 ## What runs
 
@@ -46,20 +42,18 @@ flowchart LR
   brew[brew]
   macos[macos]
   homePkg[home]
-  system[system]
   brew --> macos
   macos --> homePkg
-  homePkg -->|"DOTFILES_SYSTEM=1"| system
 ```
 
-Default order is **brew → macos → home** (see [`packages/lib.sh`](packages/lib.sh)). **`home`** applies `home/` into `$HOME` (rsync by default), fixes `~/.ssh` permissions when present, and may run a quick zinit compile. **system** runs only when **`DOTFILES_SYSTEM=1`**.
+**`./bootstrap.sh`** runs **`brew` → `macos` → `home`** in that order (three **`dotfiles_install_package`** calls in [`bootstrap.sh`](bootstrap.sh); helper in [`packages/lib.sh`](packages/lib.sh)). **`home`** applies `home/` into `$HOME` (rsync by default), fixes `~/.ssh` permissions when present, and may run a quick zinit compile.
 
 ## Where things live
 
 - **`home/`** — Files as they should appear under `$HOME` (e.g. `.zshrc`, `.gitconfig`, `.ssh/config`).
-- **`packages/brew/Brewfile`** — Brew bundle recipe; not a dotfile in `$HOME`.
-- **`packages/*/install`** — Bootstrap steps; **`packages/*/export`** — used by `./export.sh` into `exports/<name>/`.
-- **`exports/`** — Output from `./export.sh` (brew inventory, macOS export, and dotfile snapshots from `$HOME` via the `home` export).
+- **`packages/lib.sh`** — Shared shell helpers: **`dotfiles_install_package`**, **`dotfiles_run_exports`**, **`dotfiles_apply_home`**, Brew helpers, allow/skip lists.
+- **`packages/<name>/`** — One directory per concern: executable **`install`** (and optional **`export`**) plus any small data files (e.g. **`brew/Brewfile`**, **`macos/configs`**). **`bootstrap.sh`** runs **`brew`**, **`macos`**, **`home`** in order; **`export.sh`** runs **`brew`**, **`macos`**, **`home`** exports by default. **`packages/sudo/`** and **`packages/hosts/`** exist for optional manual or scripted use (not invoked by **`./bootstrap.sh`**).
+- **`exports/`** — Output from **`./export.sh`** (brew inventory, macOS defaults dump, dotfile snapshots from `$HOME` via the **`home`** export).
 
 ## Applying `home/`
 
@@ -71,18 +65,17 @@ By default **`DOTFILES_HOME_MODE`** is **rsync** (real files; `README.md` and `.
 - **`GIT_REPO_URL`** — Full clone URL when **`DOTFILES_REPO`** is not enough (non-`github.com` HTTPS, SSH, etc.). If set, it overrides **`DOTFILES_REPO`**.
 - **`DOTFILES_CLONE_DIR`** — Where `first-install.sh` puts the clone (default **`~/dotfiles`**).
 - **`DOTFILES_PACKAGES` / `DOTFILES_SKIP`** — Comma lists to allow or skip install steps (skip wins).
-- **`DOTFILES_SYSTEM=1`** — Also run `sudo` and `hosts` installs.
 - **`DOTFILES_HOME_MODE`**, **`DOTFILES_RSYNC_DELETE`** — See above.
 
 Full list: comments in [`bootstrap.sh`](bootstrap.sh) and [`packages/lib.sh`](packages/lib.sh).
 
 ## Commands
 
-```bash
-./bootstrap.sh
-./export.sh
-./export.sh --timestamp
-./packages/macos/export --list
-```
+| Command                          | Purpose                                                                                                          |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `./bootstrap.sh`                 | Homebrew + Brewfile, macOS defaults, then apply `home/` into `$HOME`.                                            |
+| `./export.sh`                    | Run package exports into `exports/` (brew, macOS, home).                                                         |
+| `./export.sh --timestamp`        | Same exports, under `exports/<YYYYmmdd-HHMMSS>/` instead of `exports/`.                                          |
+| `./packages/macos/export --list` | List `defaults` domains/keys from [`packages/macos/configs`](packages/macos/configs) (read-only; no export dir). |
 
 Personalization (local-only files, git includes, etc.): [`home/README.md`](home/README.md).

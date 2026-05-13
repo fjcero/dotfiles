@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-# packages/lib.sh - shared helpers for bootstrap and export (source only; no shebang execution side effects).
+# packages/lib.sh — shared helpers for bootstrap and export (source only).
+#
+# Install one package: dotfiles_install_package <name> …
+#   Runs packages/<name>/install when DOTFILES_PACKAGES / DOTFILES_SKIP allow it; extra args are passed through.
 #
 # Environment:
 #   DOTFILES_ROOT          Repo root (required). Set by bootstrap.sh / export.sh before sourcing.
@@ -7,7 +10,6 @@
 # Composability (install + export):
 #   DOTFILES_PACKAGES      Optional comma-separated allow list (if set, only these names run).
 #   DOTFILES_SKIP          Optional comma-separated deny list (skip wins over allow).
-#   DOTFILES_SYSTEM=1      Required to run root packages (sudo, hosts) during bootstrap.
 #   DOTFILES_EXTRA_PACKAGES_DIRS  Colon-separated roots; each has packages/<name>/install (or export).
 #
 # Apply repo home/ into $HOME:
@@ -161,50 +163,29 @@ dotfiles_apply_home() {
   esac
 }
 
-dotfiles_run_installs() {
+dotfiles_install_package() {
+  local name="$1"
+  shift
   dotfiles_require_root || return 1
   local allow="${DOTFILES_PACKAGES:-}"
   local deny="${DOTFILES_SKIP:-}"
 
-  local order=(
-    brew
-    macos
-    home
-  )
+  dotfiles_should_run_name "$name" "$allow" "$deny" || return 0
 
-  local name path
-  for name in "${order[@]}"; do
-    dotfiles_should_run_name "$name" "$allow" "$deny" || continue
-
-    if [[ "$name" == "sudo" ]] || [[ "$name" == "hosts" ]]; then
-      continue
-    fi
-
+  local path=""
+  if path="$(dotfiles_find_package_script "$name" install)"; then
+    :
+  else
     path=""
-    if path="$(dotfiles_find_package_script "$name" install)"; then
-      :
-    else
-      path=""
-    fi
-    [[ -z "${path:-}" ]] && continue
-    echo "==> install: $name"
-    "$path" "$@"
-  done
-
-  if [[ "${DOTFILES_SYSTEM:-0}" == "1" ]]; then
-    for name in sudo hosts; do
-      dotfiles_should_run_name "$name" "$allow" "$deny" || continue
-      path=""
-      if path="$(dotfiles_find_package_script "$name" install)"; then
-        :
-      else
-        path=""
-      fi
-      [[ -z "${path:-}" ]] && continue
-      echo "==> install (system): $name"
-      "$path" "$@"
-    done
   fi
+  [[ -z "${path:-}" ]] && return 0
+
+  if [[ "$name" == "sudo" || "$name" == "hosts" ]]; then
+    echo "==> install (system): $name"
+  else
+    echo "==> install: $name"
+  fi
+  "$path" "$@"
 }
 
 dotfiles_run_exports() {

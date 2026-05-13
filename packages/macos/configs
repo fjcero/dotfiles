@@ -1,48 +1,63 @@
 #!/usr/bin/env bash
-# packages/macos/configs - inventory for macOS defaults export (sourced by export; run directly for --list).
+# packages/macos/configs - defaults domains for macOS export (grouped by category; sourced by export; --list when run directly).
 
 set -euo pipefail
 
-DEFAULTS_DOMAINS=(
+# --- Global ---
+MACOS_DEFAULTS_GLOBAL=(
   "NSGlobalDomain"
+)
+
+# --- Trackpad & pointing ---
+MACOS_DEFAULTS_POINTING=(
   "com.apple.AppleMultitouchTrackpad"
   "com.apple.driver.AppleBluetoothMultitouch.trackpad"
+)
+
+# --- Dock, Finder, desktop & windowing ---
+MACOS_DEFAULTS_DESKTOP=(
   "com.apple.dock"
   "com.apple.finder"
   "com.apple.screencapture"
   "com.apple.spaces"
   "com.apple.symbolichotkeys"
+)
+
+# --- Menu bar & Control Center ---
+MACOS_DEFAULTS_MENUBAR=(
   "com.apple.controlcenter"
   "com.apple.menuextra.clock"
+)
+
+# --- Browsers & dev tools ---
+MACOS_DEFAULTS_APPS=(
   "com.google.Chrome"
   "com.apple.Terminal"
   "com.apple.dt.Xcode"
 )
 
-# App config snapshots (git/ssh live under packages/home/export).
-CONFIG_FILES=(
-  "cursor|$HOME/Library/Application Support/Cursor/User/settings.json"
-  "cursor|$HOME/Library/Application Support/Cursor/User/keybindings.json"
-  "vscode|$HOME/Library/Application Support/Code/User/settings.json"
-  "vscode|$HOME/Library/Application Support/Code/User/keybindings.json"
-  "vscode|$HOME/Library/Application Support/Code/User/snippets"
-  "iterm2|$HOME/Library/Preferences/com.googlecode.iterm2.plist"
-  "ghostty|$HOME/Library/Application Support/com.mitchellh.ghostty/config"
+# Flat list used by export (order follows groups above).
+DEFAULTS_DOMAINS=(
+  "${MACOS_DEFAULTS_GLOBAL[@]}"
+  "${MACOS_DEFAULTS_POINTING[@]}"
+  "${MACOS_DEFAULTS_DESKTOP[@]}"
+  "${MACOS_DEFAULTS_MENUBAR[@]}"
+  "${MACOS_DEFAULTS_APPS[@]}"
 )
 
 list_macos_configs() {
-  local entry app source
-
-  echo "Defaults domains:"
-  printf '  %s\n' "${DEFAULTS_DOMAINS[@]}"
-
+  echo "defaults domains (by category):"
   echo
-  echo "Config files (macos package export):"
-  for entry in "${CONFIG_FILES[@]}"; do
-    app="${entry%%|*}"
-    source="${entry#*|}"
-    printf '  %-10s %s\n' "$app" "$source"
-  done
+  echo "  Global"
+  printf '    %s\n' "${MACOS_DEFAULTS_GLOBAL[@]}"
+  echo "  Trackpad & pointing"
+  printf '    %s\n' "${MACOS_DEFAULTS_POINTING[@]}"
+  echo "  Dock, Finder, desktop & windowing"
+  printf '    %s\n' "${MACOS_DEFAULTS_DESKTOP[@]}"
+  echo "  Menu bar & Control Center"
+  printf '    %s\n' "${MACOS_DEFAULTS_MENUBAR[@]}"
+  echo "  Browsers & dev tools"
+  printf '    %s\n' "${MACOS_DEFAULTS_APPS[@]}"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then

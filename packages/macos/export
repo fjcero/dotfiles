@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# packages/macos/export - defaults + system inventory + selected app configs.
+# packages/macos/export - defaults domains + system inventory.
 #
 # Usage:
 #   ./packages/macos/export --output /path/to/exports/macos
 #   ./packages/macos/export --output ... --list
-#   ./packages/macos/export --output ... --skip-defaults --skip-config-files --skip-system --skip-system-profiler
+#   ./packages/macos/export --output ... --skip-defaults --skip-system --skip-system-profiler
 
 set -euo pipefail
 
@@ -15,7 +15,6 @@ source "$pkg_dir/configs"
 
 export_dir=""
 include_defaults=1
-include_config_files=1
 include_system=1
 include_system_profiler=1
 
@@ -28,18 +27,10 @@ safe_name_for_domain() {
   printf '%s' "${domain//\//_}"
 }
 
-relative_home_path() {
-  local source="$1"
-  local relative_path
-  relative_path="${source/#"$HOME"\//}"
-  relative_path="${relative_path#/}"
-  printf '%s' "$relative_path"
-}
-
 prepare_export_dir() {
   mkdir -p "$export_dir"
-  rm -rf "$export_dir/apps" "$export_dir/defaults" "$export_dir/system"
-  mkdir -p "$export_dir/defaults" "$export_dir/system" "$export_dir/apps"
+  rm -rf "$export_dir/defaults" "$export_dir/system"
+  mkdir -p "$export_dir/defaults" "$export_dir/system"
 }
 
 export_defaults_domain() {
@@ -51,23 +42,6 @@ export_defaults_domain() {
   else
     rm -f "$export_dir/defaults/$safe_name.txt"
   fi
-}
-
-copy_config_if_exists() {
-  local app="$1"
-  local source="$2"
-  local relative_path
-  local destination
-
-  if [[ ! -e "$source" ]]; then
-    return
-  fi
-
-  relative_path="$(relative_home_path "$source")"
-  destination="$export_dir/apps/$app/$relative_path"
-  mkdir -p "$(dirname "$destination")"
-  rm -rf "$destination"
-  cp -R "$source" "$destination"
 }
 
 export_system_inventory() {
@@ -118,10 +92,6 @@ while [[ $# -gt 0 ]]; do
       include_defaults=0
       shift
       ;;
-    --skip-config-files)
-      include_config_files=0
-      shift
-      ;;
     --skip-system)
       include_system=0
       shift
@@ -153,12 +123,6 @@ prepare_export_dir
 if [[ "$include_defaults" -eq 1 ]]; then
   for domain in "${DEFAULTS_DOMAINS[@]}"; do
     export_defaults_domain "$domain"
-  done
-fi
-
-if [[ "$include_config_files" -eq 1 ]]; then
-  for entry in "${CONFIG_FILES[@]}"; do
-    copy_config_if_exists "${entry%%|*}" "${entry#*|}"
   done
 fi
 
