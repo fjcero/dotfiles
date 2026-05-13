@@ -19,7 +19,7 @@ auto-update-channel = tip
 #theme = "cyberpunk"
 #theme = "0x96f"
 theme = "rebecca"
-# theme = "rose-pine-moon"
+#theme = "rose-pine-moon"
 #theme = "Vaughn"
 #theme = "Aurora"
 #theme = "Galizur"
@@ -86,3 +86,4 @@ keybind = alt+right=unbind
 
 mouse-scroll-multiplier = 1
 
+macos-auto-secure-input = false

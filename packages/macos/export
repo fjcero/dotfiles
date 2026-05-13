@@ -1,36 +1,77 @@
 #!/usr/bin/env bash
-# packages/macos/export - compare live macOS defaults against packages/macos/defaults.
-# Usage: ./packages/macos/export [--output <dir>]
-#   Prints drift to stdout. With --output, also writes drift to <dir>/drift.txt.
+# packages/macos/export - update existing `defaults write` lines in packages/macos/defaults
+# to reflect the current live system. Preserves comments, ordering, and never adds/removes lines.
+#
+# Usage:
+#   ./packages/macos/export [--output <dir>]
+#
+# Behavior:
+#   - For each line matching `defaults write <domain> <key> <flag> <value>`:
+#       * run `defaults read <domain> <key>`
+#       * if it fails (key not set on this machine), leave the line as-is
+#       * otherwise rewrite the value, coerced to the declared flag's representation
+#   - Coercion: `-bool` -> true/false; everything else copied verbatim.
+#   - Output: rewrites <dir>/defaults atomically (mktemp + mv). With no --output,
+#     overwrites packages/macos/defaults in place.
+#   - Values must not contain '#' (would be parsed as a comment delimiter).
 
 set -euo pipefail
 
-export_dir=""
-[[ "${1:-}" == "--output" || "${1:-}" == "-o" ]] && export_dir="${2:-}"
+# shellcheck source=../../packages/lib.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/packages/lib.sh"
 
-defaults_file="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/defaults"
-drift=0
+dotfiles_parse_output_arg "$@"
 
-grep '^defaults write ' "$defaults_file" | while read -r _ _ domain key flag rest; do
-  expected="${rest%%#*}"
-  expected="${expected%"${expected##*[! ]}"}"  # strip trailing whitespace
-  live=$(defaults read "$domain" "$key" 2>/dev/null) || { echo "  NEW  $domain $key $flag $expected"; continue; }
-  [[ "$flag" == "-bool" ]] && { [[ "$live" == "1" ]] && live="true" || live="false"; }
-  if [[ "$live" != "$expected" ]]; then
-    echo "  DIFF $domain $key: install=$expected live=$live"
-  fi
-done | {
-  output=$(cat)
-  if [[ -z "$output" ]]; then
-    echo "macos export: no drift (install matches live system)."
-  else
-    echo "macos export: drift detected:"
-    echo "$output"
-  fi
+pkg_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+dest_dir="${DOTFILES_OUTPUT_DIR:-$pkg_dir}"
+dotfiles_require_output_dir "$dest_dir"
 
-  if [[ -n "$export_dir" ]]; then
-    mkdir -p "$export_dir"
-    echo "$output" > "$export_dir/drift.txt"
-    echo "wrote: $export_dir/drift.txt"
-  fi
+src="$pkg_dir/defaults"
+dest="$dest_dir/defaults"
+if [[ ! -f "$src" ]]; then
+  echo "macos export: $src missing" >&2
+  exit 1
+fi
+
+tmp="$(mktemp)"
+trap 'rm -f "$tmp"' EXIT
+
+coerce() {
+  local flag="$1" live="$2"
+  case "$flag" in
+    -bool)
+      if [[ "$live" == "1" ]]; then
+        printf 'true'
+      else
+        printf 'false'
+      fi
+      ;;
+    *)
+      printf '%s' "$live"
+      ;;
+  esac
 }
+
+while IFS= read -r line || [[ -n "$line" ]]; do
+  case "$line" in
+    "defaults write "*)
+      rest="${line#defaults write }"
+      domain="${rest%% *}"; rest="${rest#* }"
+      key="${rest%% *}";    rest="${rest#* }"
+      flag="${rest%% *}"
+      if live="$(defaults read "$domain" "$key" 2>/dev/null)"; then
+        printf 'defaults write %s %s %s %s\n' \
+          "$domain" "$key" "$flag" "$(coerce "$flag" "$live")"
+      else
+        printf '%s\n' "$line"
+      fi
+      ;;
+    *)
+      printf '%s\n' "$line"
+      ;;
+  esac
+done < "$src" > "$tmp"
+
+mv "$tmp" "$dest"
+trap - EXIT
+echo "macos export: updated $dest"

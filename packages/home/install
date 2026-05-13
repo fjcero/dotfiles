@@ -7,12 +7,9 @@
 
 set -euo pipefail
 
-export DOTFILES_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-
-if [[ -z "${DOTFILES_ROOT:-}" ]] || [[ ! -d "$DOTFILES_ROOT" ]]; then
-  echo "home/install: DOTFILES_ROOT must be the dotfiles repository root." >&2
-  exit 1
-fi
+# shellcheck source=../../packages/lib.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/packages/lib.sh"
+dotfiles_require_root
 
 src="$DOTFILES_ROOT/home"
 if [[ ! -d "$src" ]]; then

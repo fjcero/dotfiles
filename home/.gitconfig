@@ -2,21 +2,57 @@
 	name = Francisco Caballero
 	email = fjcero@gmail.com
 
+[github]
+	user = fjcero
+
 [core]
+	editor = nvim
 	excludesfile = ~/.gitignore_global
+	pager = delta           # better diff UI (brew install git-delta)
 
 [init]
 	defaultBranch = main
 
-[rerere]
-	enabled = true
-
 [fetch]
 	prune = true
+	prunetags = true        # also prune deleted remote tags
 
 [pull]
-	ff = only
+	rebase = true
 
-# Uncomment to layer machine-local git settings (file can be empty):
-# [include]
-#	path = .config/git/local.gitconfig
+[push]
+	default = current       # push to same-name remote branch
+	autoSetupRemote = true  # no more "no upstream branch" on first push
+
+[rebase]
+	autoStash = true    # handles dirty tree on pull
+	autosquash = true   # auto-applies fixup! and squash! commits
+
+[diff]
+	algorithm = histogram   # smarter diffs, fewer phantom changes
+	colorMoved = default    # moved blocks distinct from changed ones
+
+[delta]
+	navigate = true         # n/N to jump between diff sections
+	side-by-side = true     # personal preference, can be noisy on narrow terminals
+	line-numbers = true
+
+[merge]
+	conflictstyle = zdiff3  # shows common ancestor in conflicts
+
+[rerere]
+	enabled = true
+	autoupdate = true
+
+[tag]
+	sort = version:refname  # v1.10 after v1.9, not before
+
+[help]
+	autocorrect = prompt    # suggests fix on typos, asks before running
+
+[alias]
+	st = status -sb
+	undo = reset HEAD~1 --mixed
+	wip = commit -am "wip"
+	unwip = reset HEAD~1 --mixed
+	changelog = log --graph --pretty=format:'%Cred%h%Creset - %s' --abbrev-commit

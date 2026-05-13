@@ -3,37 +3,19 @@
 
 set -euo pipefail
 
-export DOTFILES_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-export_dir=""
+# shellcheck source=../../packages/lib.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/packages/lib.sh"
 
-while [[ $# -gt 0 ]]; do
-  case "$1" in
-    --output|-o)
-      export_dir="$2"
-      shift 2
-      ;;
-    *)
-      shift
-      ;;
-  esac
-done
-
-if [[ -z "$export_dir" ]]; then
-  echo "Usage: $0 --output <dir>" >&2
-  exit 1
-fi
-
-mkdir -p "$export_dir"
+dotfiles_parse_output_arg "$@"
+dotfiles_require_output_dir "$DOTFILES_OUTPUT_DIR"
 
 if ! command -v brew >/dev/null 2>&1; then
   echo "brew not found; skipping export." >&2
   exit 0
 fi
 
-# shellcheck source=../../packages/lib.sh
-source "$DOTFILES_ROOT/packages/lib.sh"
 ensure_brew_shellenv
 
-HOMEBREW_NO_AUTO_UPDATE=1 brew bundle dump --file "$export_dir/Brewfile" --force
+HOMEBREW_NO_AUTO_UPDATE=1 brew bundle dump --file "$DOTFILES_OUTPUT_DIR/Brewfile" --force
 
-echo "brew export: $export_dir/Brewfile"
+echo "brew export: $DOTFILES_OUTPUT_DIR/Brewfile"

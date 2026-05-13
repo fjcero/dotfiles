@@ -1,180 +1,41 @@
 #!/usr/bin/env bash
-# packages/lib.sh — shared helpers for bootstrap and export (source only).
+# packages/lib.sh - loader for the helper modules in packages/helpers/.
 #
-# Install one package: dotfiles_install_package <name> …
-#   Runs packages/<name>/install when DOTFILES_PACKAGES / DOTFILES_SKIP allow it; extra args are passed through.
+# Sourced by bootstrap.sh, export.sh, and individual packages/<name>/{install,export}
+# scripts. Do NOT set shell flags here (callers own their flags).
 #
-# Environment:
-#   DOTFILES_ROOT          Repo root (required). Set by bootstrap.sh / export.sh before sourcing.
+# This file:
+#   - Auto-resolves DOTFILES_ROOT from its own location if the caller has not set it.
+#   - Sources every helper module under packages/helpers/ in dependency order.
 #
-# Composability (install + export):
-#   DOTFILES_PACKAGES      Optional comma-separated allow list (if set, only these names run).
-#   DOTFILES_SKIP          Optional comma-separated deny list (skip wins over allow).
-#   DOTFILES_EXTRA_PACKAGES_DIRS  Colon-separated roots; each has packages/<name>/install (or export).
+# Helper layout:
+#   packages/helpers/core.sh      generic helpers (require_root, ...)
+#   packages/helpers/filters.sh   allow/skip list logic
+#   packages/helpers/packages.sh  package discovery + install/export orchestration
+#   packages/helpers/io.sh        --output arg parsing and output-dir validation
+#   packages/helpers/brew.sh      Homebrew-specific helpers (used by packages/brew/*)
 #
-# Export-only (falls back to DOTFILES_* when unset):
-#   DOTFILES_EXPORT_PACKAGES
-#   DOTFILES_EXPORT_SKIP
-#   DOTFILES_EXPORT_ROOT   Base directory for macos/home exports (default: $DOTFILES_ROOT/exports). Brew writes packages/brew/Brewfile.
+# Composability env vars (full list in each module's header):
+#   DOTFILES_PACKAGES / DOTFILES_SKIP                 allow / deny lists (skip wins)
+#   DOTFILES_EXPORT_PACKAGES / DOTFILES_EXPORT_SKIP   same, but for export (falls back to the above)
+#   DOTFILES_EXTRA_PACKAGES_DIRS                      colon-separated roots for out-of-tree packages
+#   DOTFILES_EXPORT_ROOT                              base dir for the `home` export (default: $DOTFILES_ROOT/exports)
 
-set -euo pipefail
+[[ -n "${__DOTFILES_LIB_LOADED:-}" ]] && return 0
+__DOTFILES_LIB_LOADED=1
 
-dotfiles_require_root() {
-  if [[ -z "${DOTFILES_ROOT:-}" ]] || [[ ! -d "$DOTFILES_ROOT" ]]; then
-    echo "DOTFILES_ROOT must be set to the dotfiles repository root." >&2
-    return 1
-  fi
-}
+DOTFILES_ROOT="${DOTFILES_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+export DOTFILES_ROOT
 
-dotfiles_list_contains() {
-  local needle="$1"
-  local IFS=','
-  local item
-  for item in $2; do
-    item="${item//[[:space:]]/}"
-    [[ -z "$item" ]] && continue
-    if [[ "$item" == "$needle" ]]; then
-      return 0
-    fi
-  done
-  return 1
-}
-
-# skip wins: if in SKIP, return 1 (do not run). If PACKAGES set and not in PACKAGES, return 1. Else 0.
-dotfiles_should_run_name() {
-  local name="$1"
-  local allow="${2:-}"
-  local deny="${3:-}"
-
-  if [[ -n "$deny" ]] && dotfiles_list_contains "$name" "$deny"; then
-    return 1
-  fi
-  if [[ -n "$allow" ]] && ! dotfiles_list_contains "$name" "$allow"; then
-    return 1
-  fi
-  return 0
-}
-
-dotfiles_find_package_script() {
-  local name="$1"
-  local script_name="$2"
-  local path="$DOTFILES_ROOT/packages/$name/$script_name"
-
-  if [[ -x "$path" ]]; then
-    printf '%s' "$path"
-    return 0
-  fi
-
-  local root
-  if [[ -z "${DOTFILES_EXTRA_PACKAGES_DIRS:-}" ]]; then
-    return 1
-  fi
-
-  local IFS=':'
-  for root in $DOTFILES_EXTRA_PACKAGES_DIRS; do
-    root="${root/#\~/$HOME}"
-    [[ -z "$root" ]] && continue
-    path="$root/packages/$name/$script_name"
-    if [[ -x "$path" ]]; then
-      printf '%s' "$path"
-      return 0
-    fi
-  done
-  return 1
-}
-
-dotfiles_export_allow() {
-  if [[ -n "${DOTFILES_EXPORT_PACKAGES:-}" ]]; then
-    printf '%s' "$DOTFILES_EXPORT_PACKAGES"
-  elif [[ -n "${DOTFILES_PACKAGES:-}" ]]; then
-    printf '%s' "$DOTFILES_PACKAGES"
-  fi
-}
-
-dotfiles_export_deny() {
-  if [[ -n "${DOTFILES_EXPORT_SKIP:-}" ]]; then
-    printf '%s' "$DOTFILES_EXPORT_SKIP"
-  elif [[ -n "${DOTFILES_SKIP:-}" ]]; then
-    printf '%s' "$DOTFILES_SKIP"
-  fi
-}
-
-dotfiles_export_root() {
-  local base="${DOTFILES_EXPORT_ROOT:-$DOTFILES_ROOT/exports}"
-  printf '%s' "$base"
-}
-
-ensure_brew_shellenv() {
-  if [[ -x /opt/homebrew/bin/brew ]]; then
-    eval "$(/opt/homebrew/bin/brew shellenv)"
-  elif [[ -x /usr/local/bin/brew ]]; then
-    eval "$(/usr/local/bin/brew shellenv)"
-  fi
-}
-
-brew_bundle_install() {
-  local brewfile="$1"
-  if [[ ! -f "$brewfile" ]]; then
-    echo "Missing Brewfile: $brewfile" >&2
-    return 1
-  fi
-  HOMEBREW_NO_AUTO_UPDATE=1 brew bundle install --file="$brewfile"
-}
-
-dotfiles_install_package() {
-  local name="$1"
-  shift
-  dotfiles_require_root || return 1
-  local allow="${DOTFILES_PACKAGES:-}"
-  local deny="${DOTFILES_SKIP:-}"
-
-  dotfiles_should_run_name "$name" "$allow" "$deny" || return 0
-
-  local path=""
-  if path="$(dotfiles_find_package_script "$name" install)"; then
-    :
-  else
-    path=""
-  fi
-  [[ -z "${path:-}" ]] && return 0
-
-  if [[ "$name" == "sudo" || "$name" == "hosts" ]]; then
-    echo "==> install (system): $name"
-  else
-    echo "==> install: $name"
-  fi
-  "$path" "$@"
-}
-
-dotfiles_run_exports() {
-  dotfiles_require_root || return 1
-  local allow
-  local deny
-  allow="$(dotfiles_export_allow)"
-  deny="$(dotfiles_export_deny)"
-  local export_root
-  export_root="$(dotfiles_export_root)"
-
-  local order=(brew macos home)
-
-  local name path out
-  for name in "${order[@]}"; do
-    dotfiles_should_run_name "$name" "$allow" "$deny" || continue
-    path=""
-    if path="$(dotfiles_find_package_script "$name" export)"; then
-      :
-    else
-      path=""
-    fi
-    [[ -z "${path:-}" ]] && continue
-    if [[ "$name" == "brew" ]]; then
-      out="$DOTFILES_ROOT/packages/brew"
-    else
-      out="$export_root/$name"
-    fi
-    mkdir -p "$out"
-    echo "==> export: $name -> $out"
-    # Per-package export receives output directory as first arg after any global flags handled by caller.
-    "$path" --output "$out" "$@"
-  done
-}
+_dotfiles_helpers_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/helpers" && pwd)"
+# shellcheck source=helpers/core.sh
+. "$_dotfiles_helpers_dir/core.sh"
+# shellcheck source=helpers/filters.sh
+. "$_dotfiles_helpers_dir/filters.sh"
+# shellcheck source=helpers/packages.sh
+. "$_dotfiles_helpers_dir/packages.sh"
+# shellcheck source=helpers/io.sh
+. "$_dotfiles_helpers_dir/io.sh"
+# shellcheck source=helpers/brew.sh
+. "$_dotfiles_helpers_dir/brew.sh"
+unset _dotfiles_helpers_dir

@@ -3,9 +3,8 @@
 
 set -euo pipefail
 
-export DOTFILES_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # shellcheck source=../../packages/lib.sh
-source "$DOTFILES_ROOT/packages/lib.sh"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/packages/lib.sh"
 
 echo "Installing Homebrew stack..."
 
