@@ -1,6 +1,7 @@
 tap "anomalyco/tap"
 tap "jandedobbeleer/oh-my-posh"
 
+## Tools
 brew "atuin"
 brew "awscli"
 brew "curl"

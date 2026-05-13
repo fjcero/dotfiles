@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# packages/brew/export - Homebrew inventory (writes under --output).
+# packages/brew/export - dump live Homebrew state to packages/brew/Brewfile (same dir as this script; --output is that dir).
 
 set -euo pipefail
 
@@ -34,18 +34,6 @@ fi
 source "$DOTFILES_ROOT/packages/lib.sh"
 ensure_brew_shellenv
 
-if ! HOMEBREW_NO_AUTO_UPDATE=1 brew bundle dump --file "$export_dir/Brewfile" --force; then
-  echo "Warning: failed to export Brewfile." >&2
-fi
+HOMEBREW_NO_AUTO_UPDATE=1 brew bundle dump --file "$export_dir/Brewfile" --force
 
-if ! HOMEBREW_NO_AUTO_UPDATE=1 brew list --formula >"$export_dir/formulae.txt"; then
-  echo "Warning: failed to export Homebrew formulae list." >&2
-  rm -f "$export_dir/formulae.txt"
-fi
-
-if ! HOMEBREW_NO_AUTO_UPDATE=1 brew list --cask >"$export_dir/casks.txt"; then
-  echo "Warning: failed to export Homebrew cask list." >&2
-  rm -f "$export_dir/casks.txt"
-fi
-
-echo "brew export: done -> $export_dir"
+echo "brew export: $export_dir/Brewfile"

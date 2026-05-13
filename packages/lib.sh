@@ -19,7 +19,7 @@
 # Export-only (falls back to DOTFILES_* when unset):
 #   DOTFILES_EXPORT_PACKAGES
 #   DOTFILES_EXPORT_SKIP
-#   DOTFILES_EXPORT_ROOT   Base directory for per-package outputs (default: $DOTFILES_ROOT/exports).
+#   DOTFILES_EXPORT_ROOT   Base directory for macos/home exports (default: $DOTFILES_ROOT/exports). Brew writes packages/brew/Brewfile.
 
 set -euo pipefail
 
@@ -209,7 +209,11 @@ dotfiles_run_exports() {
       path=""
     fi
     [[ -z "${path:-}" ]] && continue
-    out="$export_root/$name"
+    if [[ "$name" == "brew" ]]; then
+      out="$DOTFILES_ROOT/packages/brew"
+    else
+      out="$export_root/$name"
+    fi
     mkdir -p "$out"
     echo "==> export: $name -> $out"
     # Per-package export receives output directory as first arg after any global flags handled by caller.

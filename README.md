@@ -1,6 +1,6 @@
 # Dotfiles
 
-Versioned configs under [`home/`](home/) plus [`bootstrap.sh`](bootstrap.sh) (Homebrew from [`packages/brew/Brewfile`](packages/brew/Brewfile), macOS defaults, apply configs to `$HOME`) and [`export.sh`](export.sh) for snapshots.
+Versioned configs under [`home/`](home/) plus [`bootstrap.sh`](bootstrap.sh) (Homebrew from [`packages/brew/Brewfile`](packages/brew/Brewfile), macOS defaults, apply configs to `$HOME`) and [`export.sh`](export.sh) (refresh that Brewfile; snapshot macOS + home under `exports/`).
 
 ## Quick start
 
@@ -53,7 +53,7 @@ flowchart LR
 - **`home/`** — Files as they should appear under `$HOME` (e.g. `.zshrc`, `.gitconfig`, `.ssh/config`).
 - **`packages/lib.sh`** — Shared shell helpers: **`dotfiles_install_package`**, **`dotfiles_run_exports`**, **`dotfiles_apply_home`**, Brew helpers, allow/skip lists.
 - **`packages/<name>/`** — One directory per concern: executable **`install`** (and optional **`export`**) plus any small data files (e.g. **`brew/Brewfile`**, **`macos/configs`**). **`bootstrap.sh`** runs **`brew`**, **`macos`**, **`home`** in order; **`export.sh`** runs **`brew`**, **`macos`**, **`home`** exports by default. **`packages/sudo/`** and **`packages/hosts/`** exist for optional manual or scripted use (not invoked by **`./bootstrap.sh`**).
-- **`exports/`** — Output from **`./export.sh`** (brew inventory, macOS defaults dump, dotfile snapshots from `$HOME` via the **`home`** export).
+- **`exports/`** — Output from **`./export.sh`** for **macOS** and **home** snapshots (defaults dump, copies from `$HOME`). The **brew** export updates **[`packages/brew/Brewfile`](packages/brew/Brewfile)** in the repo (not under **`exports/`**).
 
 ## Applying `home/`
 
@@ -74,8 +74,8 @@ Full list: comments in [`bootstrap.sh`](bootstrap.sh) and [`packages/lib.sh`](pa
 | Command                          | Purpose                                                                                                          |
 | -------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | `./bootstrap.sh`                 | Homebrew + Brewfile, macOS defaults, then apply `home/` into `$HOME`.                                            |
-| `./export.sh`                    | Run package exports into `exports/` (brew, macOS, home).                                                         |
-| `./export.sh --timestamp`        | Same exports, under `exports/<YYYYmmdd-HHMMSS>/` instead of `exports/`.                                          |
+| `./export.sh`                    | Refresh **`packages/brew/Brewfile`** via **`brew bundle dump`**; write **macOS** + **home** exports under **`exports/`**. |
+| `./export.sh --timestamp`        | Same, but macOS/home go under **`exports/<YYYYmmdd-HHMMSS>/`** (brew still updates **`packages/brew/Brewfile`** only).        |
 | `./packages/macos/export --list` | List `defaults` domains/keys from [`packages/macos/configs`](packages/macos/configs) (read-only; no export dir). |
 
 Personalization (local-only files, git includes, etc.): [`home/README.md`](home/README.md).

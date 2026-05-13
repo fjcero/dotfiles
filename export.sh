@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# export.sh - run package exports into exports/<package>/ (or under DOTFILES_EXPORT_ROOT).
+# export.sh - run package exports: brew updates packages/brew/Brewfile; macos/home write under exports/ (or DOTFILES_EXPORT_ROOT).
 #
 # Usage:
 #   ./export.sh
